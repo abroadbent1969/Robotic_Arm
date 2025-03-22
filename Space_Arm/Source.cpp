@@ -37,7 +37,7 @@ std::string to_string(T value) {
 }
 
 void updateLengths() {
-    float expansion = 0.000615f * (temperature / 250.0f);
+    float expansion = 0.0615f * (temperature / 250.0f);
     L1 = BASE_L1 * (1.0f + expansion);
     L2 = BASE_L2 * (1.0f + expansion);
     L3 = BASE_L3 * (1.0f + expansion);
@@ -191,10 +191,10 @@ void keyboard(unsigned char key, int x, int y) {
         gravityX += 0.2f;
         break;
     case 't':
-        temperature = std::min(250.0f, temperature + 5.0f);
+        temperature = std::min(120.0f, temperature + 5.0f);
         break;
     case 'y':
-        temperature = std::max(-250.0f, temperature - 5.0f);
+        temperature = std::max(-120.0f, temperature - 5.0f);
         break;
     }
     updateLengths();
