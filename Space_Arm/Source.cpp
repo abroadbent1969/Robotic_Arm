@@ -8,9 +8,12 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-const float L1 = 1.0f;
-const float L2 = 0.8f;
-const float L3 = 0.6f;  // Added third segment length
+const float BASE_L1 = 1.0f;
+const float BASE_L2 = 0.8f;
+const float BASE_L3 = 0.6f;
+float L1 = BASE_L1;
+float L2 = BASE_L2;
+float L3 = BASE_L3;
 float theta1 = 0.0f;
 float theta2 = 0.0f;
 float theta3 = 0.0f;
@@ -20,6 +23,9 @@ float currentTheta3 = 0.0f;
 float targetX = 1.5f;
 float targetY = 0.5f;
 float targetZ = 0.0f;
+float temperature = 0.0f;
+float gravityX = 0.1f;  // Gravity x-component (initially from right)
+float gravityY = 0.0f;  // Gravity y-component
 std::chrono::steady_clock::time_point startTime;
 bool transitioning = false;
 
@@ -30,6 +36,13 @@ std::string to_string(T value) {
     return oss.str();
 }
 
+void updateLengths() {
+    float expansion = 0.000615f * (temperature / 250.0f);
+    L1 = BASE_L1 * (1.0f + expansion);
+    L2 = BASE_L2 * (1.0f + expansion);
+    L3 = BASE_L3 * (1.0f + expansion);
+}
+
 void forwardKinematics(float& x, float& y, float& z) {
     float x1 = L1 * cos(currentTheta1);
     float y1 = L1 * sin(currentTheta1);
@@ -37,29 +50,26 @@ void forwardKinematics(float& x, float& y, float& z) {
     float y2 = y1 + L2 * sin(currentTheta1 + currentTheta2);
     x = x2 + L3 * cos(currentTheta1 + currentTheta2 + currentTheta3);
     y = y2 + L3 * sin(currentTheta1 + currentTheta2 + currentTheta3);
-    z = 0.0f;  // Still in 2D plane for simplicity
+    z = 0.0f;
 }
 
 void inverseKinematics(float x, float y) {
-    // For 3 joints, we'll use a simplified approach
-    // First, adjust target position for the third link
-    float dx = x - L3 * cos(theta1 + theta2 + theta3);  // Initial guess
+    updateLengths();
+
+    float dx = x - L3 * cos(theta1 + theta2 + theta3);
     float dy = y - L3 * sin(theta1 + theta2 + theta3);
 
-    // Calculate theta2
     float r = sqrt(dx * dx + dy * dy);
-    if (r > L1 + L2) return;  // Target unreachable
+    if (r > L1 + L2) return;
 
     float cosTheta2 = (dx * dx + dy * dy - L1 * L1 - L2 * L2) / (2 * L1 * L2);
-    cosTheta2 = std::max(-1.0f, std::min(1.0f, cosTheta2));  // Clamp to [-1, 1]
+    cosTheta2 = std::max(-1.0f, std::min(1.0f, cosTheta2));
     theta2 = acos(cosTheta2);
 
-    // Calculate theta1
     float k1 = L1 + L2 * cos(theta2);
     float k2 = L2 * sin(theta2);
     theta1 = atan2(dy, dx) - atan2(k2, k1);
 
-    // Adjust theta3 to reach the target
     float endX = L1 * cos(theta1) + L2 * cos(theta1 + theta2);
     float endY = L1 * sin(theta1) + L2 * sin(theta1 + theta2);
     theta3 = atan2(y - endY, x - endX) - (theta1 + theta2);
@@ -130,10 +140,12 @@ void display() {
 
     glColor3f(1.0, 1.0, 1.0);
     glRasterPos2f(-1.9f, 1.9f);
-    std::string angles = "Theta1: " + to_string(currentTheta1) + "\n" +
+    std::string info = "Theta1: " + to_string(currentTheta1) + "\n" +
         "Theta2: " + to_string(currentTheta2) + "\n" +
-        "Theta3: " + to_string(currentTheta3);
-    for (char c : angles) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, c);
+        "Theta3: " + to_string(currentTheta3) + "\n" +
+        "Temp: " + to_string(temperature) + "°C\n" +
+        "Gravity: (" + to_string(gravityX) + ", " + to_string(gravityY) + ")";
+    for (char c : info) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, c);
 
     glutSwapBuffers();
 }
@@ -150,6 +162,33 @@ void mouseMotion(int x, int y) {
     transitioning = true;
 }
 
+void keyboard(unsigned char key, int x, int y) {
+    switch (key) {
+        // Gravity controls
+    case 'w':  // Up
+        gravityY += 0.2f;
+        break;
+    case 's':  // Down
+        gravityY -= 0.2f;
+        break;
+    case 'a':  // Left
+        gravityX -= 0.2f;
+        break;
+    case 'd':  // Right
+        gravityX += 0.2f;
+        break;
+        // Temperature controls
+    case 't':  // Increase temperature
+        temperature = std::min(250.0f, temperature + 5.0f);
+        break;
+    case 'y':  // Decrease temperature
+        temperature = std::max(-250.0f, temperature - 5.0f);
+        break;
+    }
+    updateLengths();
+    glutPostRedisplay();
+}
+
 void update(int value) {
     if (transitioning) {
         float elapsed = std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count();
@@ -160,8 +199,18 @@ void update(int value) {
         currentTheta3 = (1 - t) * currentTheta3 + t * theta3;
 
         if (t >= 1.0f) transitioning = false;
-        glutPostRedisplay();
     }
+
+    // Apply gravity effect on base joint
+    float endX, endY, endZ;
+    forwardKinematics(endX, endY, endZ);
+    float totalMass = 1.0f;
+    float gravityTorqueX = gravityX * totalMass * endX;  // Horizontal component
+    float gravityTorqueY = gravityY * totalMass * endY;  // Vertical component
+    float totalTorque = gravityTorqueX + gravityTorqueY;
+    currentTheta1 -= totalTorque * 0.01f;
+
+    glutPostRedisplay();
     glutTimerFunc(16, update, 0);
 }
 
@@ -177,10 +226,11 @@ int main(int argc, char** argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(800, 800);
-    glutCreateWindow("Smooth Robotic Arm");
+    glutCreateWindow("Smooth Robotic Arm with Gravity and Temperature");
     init();
     glutDisplayFunc(display);
     glutMotionFunc(mouseMotion);
+    glutKeyboardFunc(keyboard);
     glutTimerFunc(16, update, 0);
     glutMainLoop();
     return 0;
