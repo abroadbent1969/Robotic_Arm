@@ -24,8 +24,8 @@ float targetX = 1.5f;
 float targetY = 0.5f;
 float targetZ = 0.0f;
 float temperature = 0.0f;
-float gravityX = 0.1f;  // Gravity x-component (initially from right)
-float gravityY = 0.0f;  // Gravity y-component
+float gravityX = 0.1f;
+float gravityY = 0.0f;
 std::chrono::steady_clock::time_point startTime;
 bool transitioning = false;
 
@@ -139,13 +139,27 @@ void display() {
     glPopMatrix();
 
     glColor3f(1.0, 1.0, 1.0);
-    glRasterPos2f(-1.9f, 1.9f);
-    std::string info = "Theta1: " + to_string(currentTheta1) + "\n" +
-        "Theta2: " + to_string(currentTheta2) + "\n" +
-        "Theta3: " + to_string(currentTheta3) + "\n" +
-        "Temp: " + to_string(temperature) + "°C\n" +
-        "Gravity: (" + to_string(gravityX) + ", " + to_string(gravityY) + ")";
-    for (char c : info) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, c);
+    float startX = -1.9f;
+    float startY = 1.9f;
+    std::string info[] = {
+        "Theta1: " + to_string(currentTheta1),
+        "Theta2: " + to_string(currentTheta2),
+        "Theta3: " + to_string(currentTheta3),
+        "Temp: " + to_string(temperature) + "°C",
+        "Gravity: (" + to_string(gravityX) + ", " + to_string(gravityY) + ")",
+        "Controls:",
+        "W: Gravity Up (+0.2)",
+        "S: Gravity Down (-0.2)",
+        "A: Gravity Left (-0.2)",
+        "D: Gravity Right (+0.2)",
+        "T: Temp +5°C",
+        "Y: Temp -5°C"
+    };
+
+    for (int i = 0; i < sizeof(info) / sizeof(info[0]); ++i) {
+        glRasterPos2f(startX, startY - i * 0.1f);  // Adjust line spacing with 0.1f
+        for (char c : info[i]) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, c);
+    }
 
     glutSwapBuffers();
 }
@@ -164,24 +178,22 @@ void mouseMotion(int x, int y) {
 
 void keyboard(unsigned char key, int x, int y) {
     switch (key) {
-        // Gravity controls
-    case 'w':  // Up
+    case 'w':
         gravityY += 0.2f;
         break;
-    case 's':  // Down
+    case 's':
         gravityY -= 0.2f;
         break;
-    case 'a':  // Left
+    case 'a':
         gravityX -= 0.2f;
         break;
-    case 'd':  // Right
+    case 'd':
         gravityX += 0.2f;
         break;
-        // Temperature controls
-    case 't':  // Increase temperature
+    case 't':
         temperature = std::min(250.0f, temperature + 5.0f);
         break;
-    case 'y':  // Decrease temperature
+    case 'y':
         temperature = std::max(-250.0f, temperature - 5.0f);
         break;
     }
@@ -201,12 +213,11 @@ void update(int value) {
         if (t >= 1.0f) transitioning = false;
     }
 
-    // Apply gravity effect on base joint
     float endX, endY, endZ;
     forwardKinematics(endX, endY, endZ);
     float totalMass = 1.0f;
-    float gravityTorqueX = gravityX * totalMass * endX;  // Horizontal component
-    float gravityTorqueY = gravityY * totalMass * endY;  // Vertical component
+    float gravityTorqueX = gravityX * totalMass * endX;
+    float gravityTorqueY = gravityY * totalMass * endY;
     float totalTorque = gravityTorqueX + gravityTorqueY;
     currentTheta1 -= totalTorque * 0.01f;
 
