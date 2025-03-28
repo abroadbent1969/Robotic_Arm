@@ -30,8 +30,8 @@ std::chrono::steady_clock::time_point startTime;
 bool transitioning = false;
 
 // Claw and cylinder variables
-float clawAngle = 0.0f;           // Angle of claw opening (0 = closed)
-const float MAX_CLAW_ANGLE = 30.0f; // Maximum claw opening angle
+float clawAngle = 0.9f;           // Angle of claw opening (0 = closed)
+const float MAX_CLAW_ANGLE = 25.0f; // Maximum claw opening angle
 bool clawHolding = false;         // Whether the claw is holding the cylinder
 float cylinderX = 1.5f;           // Cylinder position
 float cylinderY = 1.5f;
@@ -122,9 +122,9 @@ void drawStationaryCylinder(float x, float y, float z) {
     glTranslatef(x, y, z - CYLINDER_HEIGHT / 2);
     glColor3f(0.0, 1.0, 0.0);  // Green cylinder
     gluCylinder(quad, CYLINDER_RADIUS, CYLINDER_RADIUS, CYLINDER_HEIGHT, 10, 10);
-    gluDisk(quad, 0, CYLINDER_RADIUS, 5, 5);  // Bottom cap
+    gluDisk(quad, 0, CYLINDER_RADIUS, 20, 5);  // Bottom cap
     glTranslatef(0, 0, CYLINDER_HEIGHT);
-    gluDisk(quad, 0, CYLINDER_RADIUS, 5, 5);  // Top cap
+    gluDisk(quad, 0, CYLINDER_RADIUS, 20, 5);  // Top cap
     glPopMatrix();
     gluDeleteQuadric(quad);
 }
@@ -143,25 +143,36 @@ void display() {
 
     // Draw arm segments
     drawCylinder(0.0, 0.0, 0.0, joint1X, joint1Y, 0.0);
-    drawCylinder(joint1X, joint1Y, 0.0, joint2X, joint2Y, 0.0);
-    drawCylinder(joint2X, joint2Y, 0.0, endX, endY, endZ);
+    drawCylinder(joint1X, joint1Y, 0.3, joint2X, joint2Y, 0.0);
+    drawCylinder(joint2X, joint2Y, -0.3, endX, endY, endZ);
 
-    // Draw claw (two fingers)
+    // Draw claw (two fingers with additional segments)
     float clawLength = 0.3f;
     float clawBaseX = endX;
     float clawBaseY = endY;
     float clawBaseZ = endZ;
     float clawAngleRad = clawAngle * M_PI / 180.0f;
+    float defaultOpenAngle = 0.0f * M_PI / 180.0f;  // Default partial opening
 
-    // Left claw finger
-    float clawLeftX = clawBaseX + clawLength * cos(currentTheta1 + currentTheta2 + currentTheta3 + clawAngleRad);
-    float clawLeftY = clawBaseY + clawLength * sin(currentTheta1 + currentTheta2 + currentTheta3 + clawAngleRad);
-    drawCylinder(clawBaseX, clawBaseY, clawBaseZ, clawLeftX, clawLeftY, clawBaseZ, 0.05f, true);
+    // Left claw finger (with additional segment)
+    float clawLeftMidX = clawBaseX + clawLength * cos(currentTheta1 + currentTheta2 + currentTheta3 + defaultOpenAngle + clawAngleRad);
+    float clawLeftMidY = clawBaseY + clawLength * sin(currentTheta1 + currentTheta2 + currentTheta3 + defaultOpenAngle + clawAngleRad);
+    float clawLeftEndX = clawLeftMidX + clawLength * 0.7f * cos(currentTheta1 + currentTheta2 + currentTheta3 + defaultOpenAngle + clawAngleRad + 0.7f);
+    float clawLeftEndY = clawLeftMidY + clawLength * 0.7f * sin(currentTheta1 + currentTheta2 + currentTheta3 + defaultOpenAngle + clawAngleRad + -0.7f);
 
-    // Right claw finger
-    float clawRightX = clawBaseX + clawLength * cos(currentTheta1 + currentTheta2 + currentTheta3 - clawAngleRad);
-    float clawRightY = clawBaseY + clawLength * sin(currentTheta1 + currentTheta2 + currentTheta3 - clawAngleRad);
-    drawCylinder(clawBaseX, clawBaseY, clawBaseZ, clawRightX, clawRightY, clawBaseZ, 0.05f, true);
+    drawCylinder(clawBaseX, clawBaseY, clawBaseZ, clawLeftMidX, clawLeftMidY, clawBaseZ, 0.05f, true);  // Base segment
+    //drawCylinder(clawBaseX, clawBaseY, clawBaseZ, clawLeftMidX, clawLeftMidY, clawBaseZ, 0.05f, true);  // Base segment
+    drawCylinder(clawLeftMidX, clawLeftMidY, clawBaseZ, clawLeftEndX, clawLeftEndY, clawBaseZ, 0.04f, true);  // Tip segment
+
+    // Right claw finger (with additional segment)
+    float clawRightMidX = clawBaseX + clawLength * cos(currentTheta1 + currentTheta2 + currentTheta3 - defaultOpenAngle - clawAngleRad);
+    float clawRightMidY = clawBaseY + clawLength * sin(currentTheta1 + currentTheta2 + currentTheta3 - defaultOpenAngle - clawAngleRad);
+    float clawRightEndX = clawRightMidX + clawLength * 0.8f * cos(currentTheta1 + currentTheta2 + currentTheta3 - defaultOpenAngle - clawAngleRad - 0.7f);
+    float clawRightEndY = clawRightMidY + clawLength * 0.8f * sin(currentTheta1 + currentTheta2 + currentTheta3 - defaultOpenAngle - clawAngleRad - -0.7f);
+
+    drawCylinder(clawBaseX, clawBaseY, clawBaseZ, clawRightMidX, clawRightMidY, clawBaseZ, 0.05f, true);  // Base segment
+    drawCylinder(clawRightMidX, clawRightMidY, clawBaseZ, clawRightEndX, clawRightEndY, clawBaseZ, 0.04f, true);  // Tip segment
+
 
     // Draw joints
     glColor3f(1.0, 0.5, 0.0);
