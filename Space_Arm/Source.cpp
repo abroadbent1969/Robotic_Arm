@@ -26,14 +26,15 @@ float targetZ = 0.0f;
 float temperature = 0.0f;
 float gravityX = 0.1f;
 float gravityY = 0.0f;
+float torqueFactor = 0.01f;
 std::chrono::steady_clock::time_point startTime;
 bool transitioning = false;
 
 // Claw and cylinder variables
-float clawAngle = 0.9f;           // Angle of claw opening (0 = closed)
-const float MAX_CLAW_ANGLE = 25.0f; // Maximum claw opening angle
-bool clawHolding = false;         // Whether the claw is holding the cylinder
-float cylinderX = 1.5f;           // Cylinder position
+float clawAngle = 0.9f;
+const float MAX_CLAW_ANGLE = 25.0f;
+bool clawHolding = false;
+float cylinderX = 1.5f;
 float cylinderY = 1.5f;
 float cylinderZ = 0.0f;
 const float CYLINDER_RADIUS = 0.15f;
@@ -108,9 +109,9 @@ void drawCylinder(float x1, float y1, float z1, float x2, float y2, float z2, fl
         }
     }
 
-    if (isClaw) glColor3f(0.7, 0.7, 0.7);  // Gray for claw
-    else if (isObject) glColor3f(0.0, 1.0, 0.0);  // Green for cylinder object
-    else glColor3f(1.0, 1.0, 0.0);  // Yellow for arm
+    if (isClaw) glColor3f(0.7, 0.7, 0.7);
+    else if (isObject) glColor3f(0.0, 1.0, 0.0);
+    else glColor3f(1.0, 1.0, 0.0);
     gluCylinder(quad, radius, radius, length, 5, 5);
     glPopMatrix();
     gluDeleteQuadric(quad);
@@ -120,11 +121,11 @@ void drawStationaryCylinder(float x, float y, float z) {
     GLUquadric* quad = gluNewQuadric();
     glPushMatrix();
     glTranslatef(x, y, z - CYLINDER_HEIGHT / 2);
-    glColor3f(0.0, 1.0, 0.0);  // Green cylinder
+    glColor3f(0.0, 1.0, 0.0);
     gluCylinder(quad, CYLINDER_RADIUS, CYLINDER_RADIUS, CYLINDER_HEIGHT, 10, 10);
-    gluDisk(quad, 0, CYLINDER_RADIUS, 20, 5);  // Bottom cap
+    gluDisk(quad, 0, CYLINDER_RADIUS, 20, 5);
     glTranslatef(0, 0, CYLINDER_HEIGHT);
-    gluDisk(quad, 0, CYLINDER_RADIUS, 20, 5);  // Top cap
+    gluDisk(quad, 0, CYLINDER_RADIUS, 20, 5);
     glPopMatrix();
     gluDeleteQuadric(quad);
 }
@@ -141,50 +142,48 @@ void display() {
     float joint2X = joint1X + L2 * cos(currentTheta1 + currentTheta2);
     float joint2Y = joint1Y + L2 * sin(currentTheta1 + currentTheta2);
 
-    // Draw arm segments
-    drawCylinder(0.0, 0.0, 0.0, joint1X, joint1Y, 0.0);
-    drawCylinder(joint1X, joint1Y, 0.3, joint2X, joint2Y, 0.0);
-    drawCylinder(joint2X, joint2Y, -0.3, endX, endY, endZ);
+    // Draw arm segments with tapering
+    drawCylinder(0.0, 0.0, 0.0, joint1X, joint1Y, 0.0, 0.12f);
+    drawCylinder(joint1X, joint1Y, 0.3, joint2X, joint2Y, 0.0, 0.1f);
+    drawCylinder(joint2X, joint2Y, -0.3, endX, endY, endZ, 0.08f);
 
-    // Draw claw (two fingers with additional segments)
+    // Draw claw
     float clawLength = 0.3f;
     float clawBaseX = endX;
     float clawBaseY = endY;
     float clawBaseZ = endZ;
     float clawAngleRad = clawAngle * M_PI / 180.0f;
-    float defaultOpenAngle = 0.0f * M_PI / 180.0f;  // Default partial opening
+    float defaultOpenAngle = 5.0f * M_PI / 180.0f;
 
-    // Left claw finger (with additional segment)
+    // Left claw finger
     float clawLeftMidX = clawBaseX + clawLength * cos(currentTheta1 + currentTheta2 + currentTheta3 + defaultOpenAngle + clawAngleRad);
     float clawLeftMidY = clawBaseY + clawLength * sin(currentTheta1 + currentTheta2 + currentTheta3 + defaultOpenAngle + clawAngleRad);
-    float clawLeftEndX = clawLeftMidX + clawLength * 0.7f * cos(currentTheta1 + currentTheta2 + currentTheta3 + defaultOpenAngle + clawAngleRad + 0.7f);
-    float clawLeftEndY = clawLeftMidY + clawLength * 0.7f * sin(currentTheta1 + currentTheta2 + currentTheta3 + defaultOpenAngle + clawAngleRad + -0.7f);
+    float clawLeftEndX = clawLeftMidX + clawLength * 0.7f * cos(currentTheta1 + currentTheta2 + currentTheta3 + defaultOpenAngle + clawAngleRad - 0.5f);
+    float clawLeftEndY = clawLeftMidY + clawLength * 0.7f * sin(currentTheta1 + currentTheta2 + currentTheta3 + defaultOpenAngle + clawAngleRad - 0.5f);
 
-    drawCylinder(clawBaseX, clawBaseY, clawBaseZ, clawLeftMidX, clawLeftMidY, clawBaseZ, 0.05f, true);  // Base segment
-    //drawCylinder(clawBaseX, clawBaseY, clawBaseZ, clawLeftMidX, clawLeftMidY, clawBaseZ, 0.05f, true);  // Base segment
-    drawCylinder(clawLeftMidX, clawLeftMidY, clawBaseZ, clawLeftEndX, clawLeftEndY, clawBaseZ, 0.04f, true);  // Tip segment
+    drawCylinder(clawBaseX, clawBaseY, clawBaseZ, clawLeftMidX, clawLeftMidY, clawBaseZ, 0.05f, true);
+    drawCylinder(clawLeftMidX, clawLeftMidY, clawBaseZ, clawLeftEndX, clawLeftEndY, clawBaseZ, 0.04f, true);
 
-    // Right claw finger (with additional segment)
+    // Right claw finger
     float clawRightMidX = clawBaseX + clawLength * cos(currentTheta1 + currentTheta2 + currentTheta3 - defaultOpenAngle - clawAngleRad);
     float clawRightMidY = clawBaseY + clawLength * sin(currentTheta1 + currentTheta2 + currentTheta3 - defaultOpenAngle - clawAngleRad);
-    float clawRightEndX = clawRightMidX + clawLength * 0.8f * cos(currentTheta1 + currentTheta2 + currentTheta3 - defaultOpenAngle - clawAngleRad - 0.7f);
-    float clawRightEndY = clawRightMidY + clawLength * 0.8f * sin(currentTheta1 + currentTheta2 + currentTheta3 - defaultOpenAngle - clawAngleRad - -0.7f);
+    float clawRightEndX = clawRightMidX + clawLength * 0.7f * cos(currentTheta1 + currentTheta2 + currentTheta3 - defaultOpenAngle - clawAngleRad + 0.5f);
+    float clawRightEndY = clawRightMidY + clawLength * 0.7f * sin(currentTheta1 + currentTheta2 + currentTheta3 - defaultOpenAngle - clawAngleRad + 0.5f);
 
-    drawCylinder(clawBaseX, clawBaseY, clawBaseZ, clawRightMidX, clawRightMidY, clawBaseZ, 0.05f, true);  // Base segment
-    drawCylinder(clawRightMidX, clawRightMidY, clawBaseZ, clawRightEndX, clawRightEndY, clawBaseZ, 0.04f, true);  // Tip segment
+    drawCylinder(clawBaseX, clawBaseY, clawBaseZ, clawRightMidX, clawRightMidY, clawBaseZ, 0.05f, true);
+    drawCylinder(clawRightMidX, clawRightMidY, clawBaseZ, clawRightEndX, clawRightEndY, clawBaseZ, 0.04f, true);
 
-
-    // Draw joints
+    // Draw joints with increased sizes
     glColor3f(1.0, 0.5, 0.0);
     glPushMatrix();
     glTranslatef(0.0, 0.0, 0.0);
-    glutSolidSphere(0.15, 20, 20);
+    glutSolidSphere(0.2, 20, 20);
     glTranslatef(joint1X, joint1Y, 0.0);
-    glutSolidSphere(0.15, 20, 20);
+    glutSolidSphere(0.18, 20, 20);
     glTranslatef(joint2X - joint1X, joint2Y - joint1Y, 0.0);
-    glutSolidSphere(0.15, 20, 20);
+    glutSolidSphere(0.16, 20, 20);
     glTranslatef(endX - joint2X, endY - joint2Y, endZ);
-    glutSolidSphere(0.15, 20, 20);
+    glutSolidSphere(0.14, 20, 20);
     glPopMatrix();
 
     // Draw target
@@ -194,10 +193,10 @@ void display() {
     glutSolidSphere(0.1, 20, 20);
     glPopMatrix();
 
-    // Draw cylinder (moves if held, otherwise stationary)
-    drawStationaryCylinder(cylinderX, cylinderY, cylinderZ);
+    // Draw cylinder
+    drawStationaryCylinder(cylinderX, cylinderY, clawHolding ? cylinderZ : 0.0f);
 
-    // Update HUD
+    // Update HUD with torque factor
     glColor3f(1.0, 1.0, 1.0);
     float startX = -1.9f;
     float startY = 1.9f;
@@ -207,6 +206,7 @@ void display() {
         "Theta3: " + to_string(currentTheta3),
         "Temp: " + to_string(temperature) + "°C",
         "Gravity: (" + to_string(gravityX) + ", " + to_string(gravityY) + ")",
+        "Torque Factor: " + to_string(torqueFactor),
         "Claw Angle: " + to_string(clawAngle),
         "Controls:",
         "W: Gravity Up (+0.2)",
@@ -215,6 +215,8 @@ void display() {
         "D: Gravity Right (+0.2)",
         "T: Temp +5°C",
         "Y: Temp -5°C",
+        "N: Torque +0.005",
+        "M: Torque -0.005",
         "C: Close Claw",
         "V: Open Claw"
     };
@@ -259,10 +261,16 @@ void keyboard(unsigned char key, int x, int y) {
     case 'y':
         temperature = std::max(-120.0f, temperature - 5.0f);
         break;
-    case 'c':  // Close claw
+    case 'n':
+        torqueFactor = std::min(0.1f, torqueFactor + 0.005f);
+        break;
+    case 'm':
+        torqueFactor = std::max(0.0f, torqueFactor - 0.005f);
+        break;
+    case 'c':
         clawAngle = std::max(0.0f, clawAngle - 5.0f);
         break;
-    case 'v':  // Open claw
+    case 'v':
         clawAngle = std::min(MAX_CLAW_ANGLE, clawAngle + 5.0f);
         break;
     }
@@ -274,11 +282,9 @@ void update(int value) {
     if (transitioning) {
         float elapsed = std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count();
         float t = fmin(elapsed / 2.0f, 1.0f);
-
         currentTheta1 = (1 - t) * currentTheta1 + t * theta1;
         currentTheta2 = (1 - t) * currentTheta2 + t * theta2;
         currentTheta3 = (1 - t) * currentTheta3 + t * theta3;
-
         if (t >= 1.0f) transitioning = false;
     }
 
@@ -288,20 +294,37 @@ void update(int value) {
     float gravityTorqueX = gravityX * totalMass * endX;
     float gravityTorqueY = gravityY * totalMass * endY;
     float totalTorque = gravityTorqueX + gravityTorqueY;
-    currentTheta1 -= totalTorque * 0.01f;
+    currentTheta1 -= totalTorque * torqueFactor;
+
+    // Claw mid-joint calculations (same as in display)
+    float clawLength = 0.3f;
+    float clawBaseX = endX;
+    float clawBaseY = endY;
+    float clawBaseZ = endZ;
+    float clawAngleRad = clawAngle * M_PI / 180.0f;
+    float defaultOpenAngle = 5.0f * M_PI / 180.0f;
+
+    float clawLeftMidX = clawBaseX + clawLength * cos(currentTheta1 + currentTheta2 + currentTheta3 + defaultOpenAngle + clawAngleRad);
+    float clawLeftMidY = clawBaseY + clawLength * sin(currentTheta1 + currentTheta2 + currentTheta3 + defaultOpenAngle + clawAngleRad);
+    float clawRightMidX = clawBaseX + clawLength * cos(currentTheta1 + currentTheta2 + currentTheta3 - defaultOpenAngle - clawAngleRad);
+    float clawRightMidY = clawBaseY + clawLength * sin(currentTheta1 + currentTheta2 + currentTheta3 - defaultOpenAngle - clawAngleRad);
 
     // Claw interaction with cylinder
     float distToCylinder = sqrt(pow(endX - cylinderX, 2) + pow(endY - cylinderY, 2));
     if (distToCylinder < CYLINDER_RADIUS + 0.2f && clawAngle < 5.0f && !clawHolding) {
-        clawHolding = true;  // Grab the cylinder
+        clawHolding = true;
     }
     if (clawHolding && clawAngle < 5.0f) {
-        cylinderX = endX;  // Move cylinder with claw
-        cylinderY = endY;
-        cylinderZ = endZ - CYLINDER_HEIGHT / 2;
+        // Position cylinder at the midpoint of the claw's mid-joints
+        cylinderX = (clawLeftMidX + clawRightMidX) / 2.0f;
+        cylinderY = (clawLeftMidY + clawRightMidY) / 2.0f;
+        cylinderZ = clawBaseZ; // Keep Z aligned with claw plane
     }
     if (clawAngle > 5.0f && clawHolding) {
-        clawHolding = false;  // Release the cylinder
+        clawHolding = false;
+    }
+    if (!clawHolding && cylinderY > 0.0f) {
+        cylinderY -= 0.01f; // Gravity drop when released
     }
 
     glutPostRedisplay();

@@ -1,12 +1,15 @@
 ﻿  Source.cpp
-C:\Users\abroadbent\source\repos\Space_Arm\Space_Arm\Source.cpp(99,21): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-C:\Users\abroadbent\source\repos\Space_Arm\Space_Arm\Source.cpp(111,37): warning C4305: 'argument': truncation from 'double' to 'GLfloat'
-C:\Users\abroadbent\source\repos\Space_Arm\Space_Arm\Source.cpp(111,32): warning C4305: 'argument': truncation from 'double' to 'GLfloat'
-C:\Users\abroadbent\source\repos\Space_Arm\Space_Arm\Source.cpp(111,27): warning C4305: 'argument': truncation from 'double' to 'GLfloat'
-C:\Users\abroadbent\source\repos\Space_Arm\Space_Arm\Source.cpp(146,36): warning C4305: 'argument': truncation from 'double' to 'float'
+C:\Users\abroadbent\source\repos\Space_Arm\Space_Arm\Source.cpp(100,21): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\abroadbent\source\repos\Space_Arm\Space_Arm\Source.cpp(112,37): warning C4305: 'argument': truncation from 'double' to 'GLfloat'
+C:\Users\abroadbent\source\repos\Space_Arm\Space_Arm\Source.cpp(112,32): warning C4305: 'argument': truncation from 'double' to 'GLfloat'
+C:\Users\abroadbent\source\repos\Space_Arm\Space_Arm\Source.cpp(112,27): warning C4305: 'argument': truncation from 'double' to 'GLfloat'
 C:\Users\abroadbent\source\repos\Space_Arm\Space_Arm\Source.cpp(147,36): warning C4305: 'argument': truncation from 'double' to 'float'
-C:\Users\abroadbent\source\repos\Space_Arm\Space_Arm\Source.cpp(154,24): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-C:\Users\abroadbent\source\repos\Space_Arm\Space_Arm\Source.cpp(294,26): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\abroadbent\source\repos\Space_Arm\Space_Arm\Source.cpp(148,36): warning C4305: 'argument': truncation from 'double' to 'float'
+C:\Users\abroadbent\source\repos\Space_Arm\Space_Arm\Source.cpp(155,24): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\abroadbent\source\repos\Space_Arm\Space_Arm\Source.cpp(156,28): warning C4305: 'initializing': truncation from 'double' to 'float'
+C:\Users\abroadbent\source\repos\Space_Arm\Space_Arm\Source.cpp(304,24): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\abroadbent\source\repos\Space_Arm\Space_Arm\Source.cpp(305,28): warning C4305: 'initializing': truncation from 'double' to 'float'
+C:\Users\abroadbent\source\repos\Space_Arm\Space_Arm\Source.cpp(313,26): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
   Space_Arm.vcxproj -> C:\Users\abroadbent\source\repos\Space_Arm\x64\Debug\Space_Arm.exe
   'pwsh.exe' is not recognized as an internal or external command,
   operable program or batch file.
