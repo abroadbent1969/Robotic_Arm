@@ -31,8 +31,8 @@ std::chrono::steady_clock::time_point startTime;
 bool transitioning = false;
 
 // Claw and cylinder variables
-float clawAngle = 0.9f;
-const float MAX_CLAW_ANGLE = 25.0f;
+float clawAngle = 15.9f;
+const float MAX_CLAW_ANGLE = 45.0f;
 bool clawHolding = false;
 float cylinderX = 1.5f;
 float cylinderY = 1.5f;
@@ -153,7 +153,7 @@ void display() {
     float clawBaseY = endY;
     float clawBaseZ = endZ;
     float clawAngleRad = clawAngle * M_PI / 180.0f;
-    float defaultOpenAngle = 5.0f * M_PI / 180.0f;
+    float defaultOpenAngle = 15.0f * M_PI / 180.0f;
 
     // Left claw finger
     float clawLeftMidX = clawBaseX + clawLength * cos(currentTheta1 + currentTheta2 + currentTheta3 + defaultOpenAngle + clawAngleRad);
@@ -311,16 +311,16 @@ void update(int value) {
 
     // Claw interaction with cylinder
     float distToCylinder = sqrt(pow(endX - cylinderX, 2) + pow(endY - cylinderY, 2));
-    if (distToCylinder < CYLINDER_RADIUS + 0.2f && clawAngle < 5.0f && !clawHolding) {
+    if (distToCylinder < CYLINDER_RADIUS + 0.2f && clawAngle < 25.0f && !clawHolding) {
         clawHolding = true;
     }
-    if (clawHolding && clawAngle < 5.0f) {
+    if (clawHolding && clawAngle < 25.0f) {
         // Position cylinder at the midpoint of the claw's mid-joints
         cylinderX = (clawLeftMidX + clawRightMidX) / 2.0f;
         cylinderY = (clawLeftMidY + clawRightMidY) / 2.0f;
         cylinderZ = clawBaseZ; // Keep Z aligned with claw plane
     }
-    if (clawAngle > 5.0f && clawHolding) {
+    if (clawAngle > 25.0f && clawHolding) {
         clawHolding = false;
     }
     if (!clawHolding && cylinderY > 0.0f) {
