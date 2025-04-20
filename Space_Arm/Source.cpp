@@ -59,7 +59,7 @@ float omega3 = 0.0f; // Angular velocity for joint 3
 const float JOINT_FRICTION = 2.5f; // Viscous friction coefficient
 const float JOINT_LIMIT_MIN = -M_PI; // Joint angle limits
 const float JOINT_LIMIT_MAX = M_PI;
-float cylinderMass = 1.5f; // Cylinder mass (kg)
+float cylinderMass = 1.8f; // Cylinder mass (kg)
 const float TORQUE_SCALE = 3.0f; // Scale torques for stiffer motion
 const float COLLISION_DAMPING = 0.02f; // Damping factor for collision response
 
@@ -271,7 +271,7 @@ void display() {
     glColor3f(1.0, 1.0, 1.0);
     float startX = -1.95f;
     float startY = 1.9f;
-    std::string info[19] = {
+    std::string info[20] = {
         "Theta1: " + std::to_string(currentTheta1) + " rad",
         "Theta2: " + std::to_string(currentTheta2) + " rad",
         "Theta3: " + std::to_string(currentTheta3) + " rad",
@@ -290,10 +290,11 @@ void display() {
         "C: Close Claw",
         "V: Open Claw",
         "Q: Decrease Gravity",
-        "W: Increase Gravity"
+        "W: Increase Gravity",
+        "R: Reset Cylinder"
     };
 
-    for (int i = 0; i < 19; ++i) {
+    for (int i = 0; i < 20; ++i) {
         glRasterPos2f(startX, startY - i * 0.1f);
         for (char c : info[i]) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, c);
     }
@@ -334,10 +335,20 @@ void keyboard(unsigned char key, int x, int y) {
         clawAngle = std::min(MAX_CLAW_ANGLE, clawAngle + 5.0f);
         break;
     case 'q':
-        GRAVITY = std::max(0.0f, GRAVITY - 0.5f); // Decrease gravity
+        GRAVITY = std::max(0.0f, GRAVITY - 0.5f);
         break;
     case 'w':
-        GRAVITY = std::min(9.81f, GRAVITY + 0.5f); // Increase gravity
+        GRAVITY = std::min(9.81f, GRAVITY + 0.5f);
+        break;
+    case 'r': // Reset cylinder position
+    case 'R':
+        cylinderX = 1.5f;
+        cylinderY = 1.5f;
+        cylinderZ = 0.0f;
+        cylinderVelX = 0.0f;
+        cylinderVelY = 0.0f;
+        cylinderVelZ = 0.0f;
+        clawHolding = false; // Release cylinder if held
         break;
     }
     updateLengths();
@@ -373,7 +384,6 @@ void computeJointTorques(float& torque1, float& torque2, float& torque3) {
     torque3 -= JOINT_FRICTION * omega3;
 }
 
-// PID controller for smooth joint movement
 void applyPIDControl(float& torque1, float& torque2, float& torque3) {
     float error1 = theta1 - currentTheta1;
     float error2 = theta2 - currentTheta2;
@@ -428,12 +438,23 @@ void update(int value) {
         float joint2X = joint1X + L2 * cos(currentTheta1 + currentTheta2);
         float joint2Y = joint1Y + L2 * sin(currentTheta1 + currentTheta2);
 
-        bool armCollision = false;
-        float pushVelX = 0.0f, pushVelY = 0.0f;
-        armCollision |= checkArmCollision(0.0f, 0.0f, 0.0f, joint1X, joint1Y, 0.0f, 0.12f, pushVelX, pushVelY);
-        armCollision |= checkArmCollision(joint1X, joint1Y, 0.3f, joint2X, joint2Y, 0.0f, 0.1f, pushVelX, pushVelY);
-        armCollision |= checkArmCollision(joint2X, joint2Y, -0.3f, endX, endY, endZ, 0.08f, pushVelX, pushVelY);
+        // Accumulate push velocities from all collisions
+        float totalPushVelX = 0.0f, totalPushVelY = 0.0f;
+        bool anyCollision = false;
+        float pushVelX, pushVelY;
 
+        // Check arm segment collisions with reduced radii
+        anyCollision |= checkArmCollision(0.0f, 0.0f, 0.0f, joint1X, joint1Y, 0.0f, 0.08f, pushVelX, pushVelY);
+        totalPushVelX += pushVelX;
+        totalPushVelY += pushVelY;
+        anyCollision |= checkArmCollision(joint1X, joint1Y, 0.3f, joint2X, joint2Y, 0.0f, 0.06f, pushVelX, pushVelY);
+        totalPushVelX += pushVelX;
+        totalPushVelY += pushVelY;
+        anyCollision |= checkArmCollision(joint2X, joint2Y, -0.3f, endX, endY, endZ, 0.05f, pushVelX, pushVelY);
+        totalPushVelX += pushVelX;
+        totalPushVelY += pushVelY;
+
+        // Check claw segment collisions with reduced radii
         float clawLength = 0.3f;
         float clawBaseX = endX;
         float clawBaseY = endY;
@@ -451,24 +472,30 @@ void update(int value) {
         float clawRightEndX = clawRightMidX + clawLength * 0.7f * cos(currentTheta1 + currentTheta2 + currentTheta3 - defaultOpenAngle - clawAngleRad + 0.5f);
         float clawRightEndY = clawRightMidY + clawLength * 0.7f * sin(currentTheta1 + currentTheta2 + currentTheta3 - defaultOpenAngle - clawAngleRad + 0.5f);
 
-        bool clawCollision = false;
-        clawCollision |= checkArmCollision(clawBaseX, clawBaseY, clawBaseZ, clawLeftMidX, clawLeftMidY, clawBaseZ, 0.05f, pushVelX, pushVelY);
-        clawCollision |= checkArmCollision(clawLeftMidX, clawLeftMidY, clawBaseZ, clawLeftEndX, clawLeftEndY, clawBaseZ, 0.04f, pushVelX, pushVelY);
-        clawCollision |= checkArmCollision(clawBaseX, clawBaseY, clawBaseZ, clawRightMidX, clawRightMidY, clawBaseZ, 0.05f, pushVelX, pushVelY);
-        clawCollision |= checkArmCollision(clawRightMidX, clawRightMidY, clawBaseZ, clawRightEndX, clawRightEndY, clawBaseZ, 0.04f, pushVelX, pushVelY);
+        anyCollision |= checkArmCollision(clawBaseX, clawBaseY, clawBaseZ, clawLeftMidX, clawLeftMidY, clawBaseZ, 0.03f, pushVelX, pushVelY);
+        totalPushVelX += pushVelX;
+        totalPushVelY += pushVelY;
+        anyCollision |= checkArmCollision(clawLeftMidX, clawLeftMidY, clawBaseZ, clawLeftEndX, clawLeftEndY, clawBaseZ, 0.02f, pushVelX, pushVelY);
+        totalPushVelX += pushVelX;
+        totalPushVelY += pushVelY;
+        anyCollision |= checkArmCollision(clawBaseX, clawBaseY, clawBaseZ, clawRightMidX, clawRightMidY, clawBaseZ, 0.03f, pushVelX, pushVelY);
+        totalPushVelX += pushVelX;
+        totalPushVelY += pushVelY;
+        anyCollision |= checkArmCollision(clawRightMidX, clawRightMidY, clawBaseZ, clawRightEndX, clawRightEndY, clawBaseZ, 0.02f, pushVelX, pushVelY);
+        totalPushVelX += pushVelX;
+        totalPushVelY += pushVelY;
 
-        // Update cylinder velocity if collision occurs
-        if ((armCollision || clawCollision) && !clawHolding) {
-            cylinderVelX += pushVelX;
-            cylinderVelY += pushVelY;
-            // Allow arm to continue moving (no angle reset)
+        // Apply accumulated push velocities to cylinder if not held
+        if (anyCollision && !clawHolding) {
+            cylinderVelX += totalPushVelX;
+            cylinderVelY += totalPushVelY;
         }
 
         if (t >= 1.0f) {
             transitioning = false;
         }
 
-        float distToCylinder = sqrt(pow(endX - cylinderX, 1) + pow(endY - cylinderY, 1));
+        float distToCylinder = sqrt(pow(endX - cylinderX, 2) + pow(endY - cylinderY, 2));
         if (distToCylinder < CYLINDER_RADIUS + 0.2f && clawAngle < 30.0f && !clawHolding) {
             clawHolding = true;
         }
